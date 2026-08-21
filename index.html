@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Extreme Timer</title>
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -26,7 +31,7 @@
       position: relative;
     }
 
-    /* Overlay de sélection de la langue */
+    /* Overlay Sélection de Langue */
     .lang-overlay {
       position: fixed;
       top: 0;
@@ -62,13 +67,8 @@
       -webkit-text-fill-color: transparent;
     }
 
-    .lang-card p {
-      color: #94a3b8;
-      font-size: 0.95rem;
-      margin-bottom: 24px;
-    }
+    .lang-card p { color: #94a3b8; font-size: 0.95rem; margin-bottom: 24px; }
 
-    /* Style du menu déroulant */
     .lang-select {
       width: 100%;
       padding: 16px;
@@ -81,17 +81,6 @@
       outline: none;
       margin-bottom: 20px;
       cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .lang-select:focus {
-      border-color: #6366f1;
-    }
-
-    .lang-select option {
-      background: #0f172a;
-      color: #fff;
-      padding: 10px;
     }
 
     .lang-submit-btn {
@@ -104,37 +93,7 @@
       font-size: 1.05rem;
       font-weight: 700;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
       box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
-    }
-
-    .lang-submit-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
-    }
-
-    .online-counter {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(10px);
-      padding: 10px 18px;
-      border-radius: 99px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .pulse-dot {
-      width: 10px;
-      height: 10px;
-      background-color: #22c55e;
-      border-radius: 50%;
-      box-shadow: 0 0 10px #22c55e;
     }
 
     .top-options {
@@ -142,7 +101,6 @@
       top: 24px;
       right: 24px;
       display: flex;
-      align-items: center;
       gap: 12px;
     }
 
@@ -154,45 +112,17 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
       font-size: 0.85rem;
       font-weight: 600;
-      display: flex;
-      align-items: center;
     }
 
-    .toggle-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-    }
-
+    .toggle-container { display: flex; align-items: center; gap: 8px; cursor: pointer; }
     .toggle-switch {
-      position: relative;
-      width: 40px;
-      height: 22px;
-      background-color: #334155;
-      border-radius: 20px;
-      transition: background-color 0.2s;
+      position: relative; width: 40px; height: 22px; background-color: #334155; border-radius: 20px; transition: 0.2s;
     }
-
     .toggle-switch::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 18px;
-      height: 18px;
-      background-color: #fff;
-      border-radius: 50%;
-      transition: transform 0.2s;
+      content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background-color: #fff; border-radius: 50%; transition: 0.2s;
     }
-
-    input[type="checkbox"]:checked + .toggle-switch {
-      background-color: #6366f1;
-    }
-
-    input[type="checkbox"]:checked + .toggle-switch::after {
-      transform: translateX(18px);
-    }
+    input[type="checkbox"]:checked + .toggle-switch { background-color: #6366f1; }
+    input[type="checkbox"]:checked + .toggle-switch::after { transform: translateX(18px); }
 
     .container {
       width: 100%;
@@ -216,21 +146,11 @@
       background: linear-gradient(90deg, #38bdf8, #818cf8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      letter-spacing: -1px;
     }
 
-    p.subtitle {
-      color: #94a3b8;
-      font-size: 1.05rem;
-      margin-bottom: 28px;
-    }
+    p.subtitle { color: #94a3b8; font-size: 1.05rem; margin-bottom: 28px; }
 
-    .mode-selector {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 30px;
-      width: 100%;
-    }
+    .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
 
     .btn {
       flex: 1;
@@ -242,20 +162,30 @@
       font-weight: 600;
       font-size: 0.95rem;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.2s;
       border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .btn:hover {
-      background: #334155;
-      color: #fff;
     }
 
     .btn.active {
       background: #6366f1;
       color: #ffffff;
       box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
-      border-color: transparent;
+    }
+
+    /* Multi-Online UI */
+    .online-box {
+      display: none;
+      width: 100%;
+      margin-bottom: 20px;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 15px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .online-inputs { display: flex; gap: 10px; margin-top: 10px; }
+    .online-input {
+      flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #0f172a; color: #fff; text-align: center; font-size: 1rem; outline: none;
     }
 
     .target-box {
@@ -267,20 +197,8 @@
       width: 100%;
     }
 
-    .target-box span {
-      font-size: 0.9rem;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      font-weight: 600;
-    }
-
-    .target-box div {
-      font-size: 2.8rem;
-      font-weight: 800;
-      color: #38bdf8;
-      margin-top: 4px;
-    }
+    .target-box span { font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; }
+    .target-box div { font-size: 2.8rem; font-weight: 800; color: #38bdf8; margin-top: 4px; }
 
     .timer-display {
       font-size: 5rem;
@@ -303,17 +221,6 @@
       cursor: pointer;
       box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
       transition: all 0.15s ease;
-      letter-spacing: 1px;
-    }
-
-    .action-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 28px rgba(34, 197, 94, 0.5);
-    }
-
-    .action-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
 
     .action-btn.stop {
@@ -321,79 +228,29 @@
       box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
     }
 
-    .hint {
-      margin-top: 14px;
-      font-size: 0.85rem;
-      color: #64748b;
-    }
+    .status-msg { font-size: 0.95rem; color: #38bdf8; margin-bottom: 12px; font-weight: 600; }
 
-    kbd {
-      background: #334155;
-      color: #cbd5e1;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 0.8rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .status-msg {
-      font-size: 0.95rem;
-      color: #f87171;
-      margin-bottom: 12px;
-      font-weight: 600;
-    }
-
-    .results {
-      margin-top: 24px;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
+    .results { margin-top: 24px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
     .result-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 20px;
-      background: rgba(15, 23, 42, 0.5);
-      border-radius: 14px;
-      font-size: 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 20px; background: rgba(15, 23, 42, 0.5); border-radius: 14px; font-size: 1rem;
     }
-
-    .score-badge {
-      font-weight: 700;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-    }
-
-    .score-badge.good { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-    .score-badge.bad { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .score-badge { font-weight: 700; padding: 6px 12px; border-radius: 8px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
 
-  <!-- Écran de sélection de la langue avec Menu Déroulant -->
   <div class="lang-overlay" id="langOverlay">
     <div class="lang-card">
       <h2>Langue / Language</h2>
-      <p>Choisis ta langue pour continuer :</p>
+      <p>Choisis ta langue :</p>
       <select id="langSelect" class="lang-select">
         <option value="fr">🇫🇷 Français</option>
         <option value="en">🇬🇧 English</option>
         <option value="es">🇪🇸 Español</option>
-        <option value="de">🇩🇪 Deutsch</option>
-        <option value="it">🇮🇹 Italiano</option>
       </select>
       <button class="lang-submit-btn" onclick="submitLanguage()">VALIDER / PLAY</button>
     </div>
-  </div>
-
-  <div class="online-counter">
-    <div class="pulse-dot"></div>
-    <span id="txtOnline">1 joueur connecté (vous)</span>
   </div>
 
   <div class="top-options">
@@ -417,203 +274,88 @@
       <button class="btn" id="btnP2" onclick="setMode('p2', this)">2 Joueurs</button>
     </div>
 
+    <!-- Section multijoueur Firebase -->
+    <div class="online-box" id="onlineBox">
+      <p style="font-size: 0.9rem; color: #94a3b8;">Entre un code de salon pour jouer avec un ami :</p>
+      <div class="online-inputs">
+        <input type="text" id="roomInput" class="online-input" placeholder="Code du salon (ex: 1234)" maxlength="6">
+        <button class="btn active" onclick="joinRoom()">REJOINDRE / CRÉER</button>
+      </div>
+    </div>
+
     <div class="target-box">
       <span id="txtTargetLabel">Temps Cible</span>
       <div id="targetDisplay">5.0s</div>
     </div>
 
     <div class="timer-display" id="timer">0.0</div>
-
     <div id="statusMsg" class="status-msg" style="display: none;"></div>
 
     <button class="action-btn" id="actionBtn" onclick="handleAction()">LANCER</button>
     
-    <div class="hint" id="txtHint">Astuce : Appuie sur la <kbd>Barre Espace</kbd> pour démarrer/arrêter</div>
-
     <div class="results" id="results"></div>
   </div>
 
   <script>
+    // Configuration Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKrFKbtKEtIY7N7gqOEplfvW1WelfgoI",
+      authDomain: "extreme-timer.firebaseapp.com",
+      databaseURL: "https://extreme-timer-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "extreme-timer",
+      storageBucket: "extreme-timer.firebasestorage.app",
+      messagingSenderId: "503961343619",
+      appId: "1:503961343619:web:868bc2bf98dbdf2c726db6",
+      measurementId: "G-60NQWRS482"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     let currentLang = 'fr';
     let mode = 'solo';
     let isRunning = false;
-    let isSearchingMatch = false;
     let startTime = 0;
     let timerInterval = null;
     let targetTime = 5.0;
-    let p1Time = null;
-    let p2Time = null;
+    let p1Time = null, p2Time = null;
     let activePlayer = 1;
     let showDecimals = true;
 
+    // Multijoueur variables
+    let currentRoom = null;
+    let myPlayerRole = null; // 'p1' or 'p2'
+
     const dict = {
       fr: {
-        online: "1 joueur connecté (vous)",
         decimals: "Afficher les dixièmes (ex: 2.3)",
         subtitle: "Arrête le chronomètre au plus proche de l'objectif !",
-        modeSolo: "Solo",
-        modeOnline: "En ligne ⚡",
-        modeAI: "VS IA",
-        modeP2: "2 Joueurs",
-        targetLabel: "Temps Cible",
-        hint: "Astuce : Appuie sur la <kbd>Barre Espace</kbd> pour démarrer/arrêter",
-        btnStart: "LANCER",
-        btnStop: "STOP !",
-        btnReplay: "REJOUER",
-        btnSearch: "RECHERCHER UN JOUEUR",
-        btnP1Start: "J1 : LANCER",
-        btnP2Start: "J2 : LANCER",
-        searching: "Connexion au serveur de matchmaking...",
-        searchingBtn: "RECHERCHE EN COURS...",
-        noPlayer: "Aucun joueur trouvé en ligne actuellement.",
-        retry: "RÉESSAYER",
-        diffLabel: "Écart avec l'objectif",
-        you: "Toi",
-        ai: "IA",
-        p1: "Joueur 1",
-        p2: "Joueur 2",
-        diffBadge: "d'écart",
-        winner: "Gagnant",
-        draw: "Égalité"
+        modeSolo: "Solo", modeOnline: "En ligne ⚡", modeAI: "VS IA", modeP2: "2 Joueurs",
+        targetLabel: "Temps Cible", btnStart: "LANCER", btnStop: "STOP !", btnReplay: "REJOUER"
       },
       en: {
-        online: "1 player connected (you)",
         decimals: "Show tenths (ex: 2.3)",
         subtitle: "Stop the timer as close to the target as possible!",
-        modeSolo: "Solo",
-        modeOnline: "Online ⚡",
-        modeAI: "VS AI",
-        modeP2: "2 Players",
-        targetLabel: "Target Time",
-        hint: "Tip: Press <kbd>Spacebar</kbd> to start/stop",
-        btnStart: "START",
-        btnStop: "STOP!",
-        btnReplay: "PLAY AGAIN",
-        btnSearch: "SEARCH MATCH",
-        btnP1Start: "P1: START",
-        btnP2Start: "P2: START",
-        searching: "Connecting to matchmaking server...",
-        searchingBtn: "SEARCHING...",
-        noPlayer: "No online players found at the moment.",
-        retry: "RETRY",
-        diffLabel: "Gap from target",
-        you: "You",
-        ai: "AI",
-        p1: "Player 1",
-        p2: "Player 2",
-        diffBadge: "gap",
-        winner: "Winner",
-        draw: "Draw"
+        modeSolo: "Solo", modeOnline: "Online ⚡", modeAI: "VS AI", modeP2: "2 Players",
+        targetLabel: "Target Time", btnStart: "START", btnStop: "STOP!", btnReplay: "PLAY AGAIN"
       },
       es: {
-        online: "1 jugador conectado (tú)",
         decimals: "Mostrar décimas (ej: 2.3)",
         subtitle: "¡Detén el temporizador lo más cerca posible del objetivo!",
-        modeSolo: "Solo",
-        modeOnline: "En línea ⚡",
-        modeAI: "VS IA",
-        modeP2: "2 Jugadores",
-        targetLabel: "Tiempo Objetivo",
-        hint: "Consejo: Pulsa la <kbd>Barra Espaciadora</kbd> para iniciar/detener",
-        btnStart: "INICIAR",
-        btnStop: "¡ALTO!",
-        btnReplay: "JUGAR DE NUEVO",
-        btnSearch: "BUSCAR JUGADOR",
-        btnP1Start: "J1: INICIAR",
-        btnP2Start: "J2: INICIAR",
-        searching: "Conectando al servidor...",
-        searchingBtn: "BUSCANDO...",
-        noPlayer: "No se encontraron jugadores en línea.",
-        retry: "REINTENTAR",
-        diffLabel: "Diferencia con el objetivo",
-        you: "Tú",
-        ai: "IA",
-        p1: "Jugador 1",
-        p2: "Jugador 2",
-        diffBadge: "de dif.",
-        winner: "Ganador",
-        draw: "Empate"
-      },
-      de: {
-        online: "1 Spieler verbunden (du)",
-        decimals: "Zehntel anzeigen (z.B. 2.3)",
-        subtitle: "Stoppe den Timer so nah wie möglich am Ziel!",
-        modeSolo: "Solo",
-        modeOnline: "Online ⚡",
-        modeAI: "VS KI",
-        modeP2: "2 Spieler",
-        targetLabel: "Zielzeit",
-        hint: "Tipp: Drücke die <kbd>Leeertaste</kbd> zum Starten/Stoppen",
-        btnStart: "START",
-        btnStop: "STOPP!",
-        btnReplay: "NOCHMAL",
-        btnSearch: "SPIELER SUCHEN",
-        btnP1Start: "S1: START",
-        btnP2Start: "S2: START",
-        searching: "Verbindung zum Server...",
-        searchingBtn: "SUCHE...",
-        noPlayer: "Derzeit keine Spieler online.",
-        retry: "ERNEUT SUCHEN",
-        diffLabel: "Abweichung vom Ziel",
-        you: "Du",
-        ai: "KI",
-        p1: "Spieler 1",
-        p2: "Spieler 2",
-        diffBadge: "Abweichung",
-        winner: "Gewinner",
-        draw: "Unentschieden"
-      },
-      it: {
-        online: "1 giocatore connesso (tu)",
-        decimals: "Mostra decimi (es: 2.3)",
-        subtitle: "Ferma il timer il più vicino possibile all'obiettivo!",
-        modeSolo: "Solo",
-        modeOnline: "Online ⚡",
-        modeAI: "VS IA",
-        modeP2: "2 Giocatori",
-        targetLabel: "Tempo Obiettivo",
-        hint: "Suggerimento: Premi la <kbd>Barra Spaziatrice</kbd> per avviare/fermare",
-        btnStart: "AVVIA",
-        btnStop: "STOP!",
-        btnReplay: "GIOCA ANCORA",
-        btnSearch: "CERCA GIOCATORE",
-        btnP1Start: "G1: AVVIA",
-        btnP2Start: "G2: AVVIA",
-        searching: "Connessione al server...",
-        searchingBtn: "RICERCA...",
-        noPlayer: "Nessun giocatore trovato online.",
-        retry: "RIPROVA",
-        diffLabel: "Scarto dall'obiettivo",
-        you: "Tu",
-        ai: "IA",
-        p1: "Giocatore 1",
-        p2: "Giocatore 2",
-        diffBadge: "di scarto",
-        winner: "Vincitore",
-        draw: "Pareggio"
+        modeSolo: "Solo", modeOnline: "En línea ⚡", modeAI: "VS IA", modeP2: "2 Jugadores",
+        targetLabel: "Tiempo Objetivo", btnStart: "INICIAR", btnStop: "¡ALTO!", btnReplay: "JUGAR DE NUEVO"
       }
     };
 
-    const langSelect = document.getElementById('langSelect');
-    const langOverlay = document.getElementById('langOverlay');
-
     function submitLanguage() {
-      currentLang = langSelect.value;
-      langOverlay.style.display = 'none';
+      currentLang = document.getElementById('langSelect').value;
+      document.getElementById('langOverlay').style.display = 'none';
       applyLanguage();
       resetGame();
     }
 
-    const timerEl = document.getElementById('timer');
-    const targetEl = document.getElementById('targetDisplay');
-    const actionBtn = document.getElementById('actionBtn');
-    const resultsEl = document.getElementById('results');
-    const statusMsg = document.getElementById('statusMsg');
-    const msToggle = document.getElementById('msToggle');
-
     function applyLanguage() {
       const t = dict[currentLang];
-      document.getElementById('txtOnline').textContent = t.online;
       document.getElementById('txtDecimals').textContent = t.decimals;
       document.getElementById('txtSubtitle').textContent = t.subtitle;
       document.getElementById('btnSolo').textContent = t.modeSolo;
@@ -621,201 +363,176 @@
       document.getElementById('btnAI').textContent = t.modeAI;
       document.getElementById('btnP2').textContent = t.modeP2;
       document.getElementById('txtTargetLabel').textContent = t.targetLabel;
-      document.getElementById('txtHint').innerHTML = t.hint;
     }
-
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && langOverlay.style.display === 'none') {
-        e.preventDefault();
-        if (!isSearchingMatch) {
-          handleAction();
-        }
-      }
-    });
 
     function toggleDecimals() {
-      showDecimals = msToggle.checked;
-      updateDisplays();
+      showDecimals = document.getElementById('msToggle').checked;
+      document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
     }
 
-    function formatTime(seconds) {
-      return showDecimals ? seconds.toFixed(1) : Math.floor(seconds).toString();
-    }
-
-    function updateDisplays() {
-      targetEl.textContent = formatTime(targetTime) + 's';
-      if (!isRunning) {
-        const currentVal = parseFloat(timerEl.textContent);
-        timerEl.textContent = (!isNaN(currentVal) && currentVal > 0) ? formatTime(currentVal) : formatTime(0);
-      }
+    function formatTime(s) {
+      return showDecimals ? s.toFixed(1) : Math.floor(s).toString();
     }
 
     function setMode(newMode, btnElement) {
-      if (isRunning || isSearchingMatch) return;
+      if (isRunning) return;
       mode = newMode;
-      document.querySelectorAll('.mode-selector .btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.mode-selector .btn').forEach(b => b.classList.remove('active'));
       btnElement.classList.add('active');
+      
+      document.getElementById('onlineBox').style.display = (mode === 'online') ? 'block' : 'none';
       resetGame();
     }
 
-    function generateTarget() {
-      let newTarget;
-      do {
-        newTarget = Math.floor(Math.random() * 7) + 3;
-      } while (newTarget === targetTime);
-      
-      targetTime = newTarget;
-      targetEl.textContent = formatTime(targetTime) + 's';
-    }
-
     function resetGame() {
-      const t = dict[currentLang];
       clearInterval(timerInterval);
       isRunning = false;
-      isSearchingMatch = false;
-      timerEl.textContent = formatTime(0);
-      statusMsg.style.display = 'none';
-      actionBtn.classList.remove('stop');
-      actionBtn.disabled = false;
-      resultsEl.innerHTML = '';
-      p1Time = null;
-      p2Time = null;
-      activePlayer = 1;
+      document.getElementById('timer').textContent = formatTime(0);
+      document.getElementById('statusMsg').style.display = 'none';
+      document.getElementById('actionBtn').classList.remove('stop');
+      document.getElementById('actionBtn').disabled = false;
+      document.getElementById('results').innerHTML = '';
+      p1Time = null; p2Time = null;
+      document.getElementById('actionBtn').textContent = dict[currentLang].btnStart;
 
-      if (mode === 'p2') {
-        actionBtn.textContent = t.btnP1Start;
-      } else if (mode === 'online') {
-        actionBtn.textContent = t.btnSearch;
-      } else {
-        actionBtn.textContent = t.btnStart;
+      if (mode !== 'online') {
+        targetTime = Math.floor(Math.random() * 7) + 3;
+        document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
       }
+    }
 
-      generateTarget();
+    /* LOGIQUE EN LIGNE (FIREBASE) */
+    function joinRoom() {
+      const roomCode = document.getElementById('roomInput').value.trim();
+      if (!roomCode) return alert("Entre un code de salon !");
+      
+      currentRoom = roomCode;
+      const roomRef = db.ref('rooms/' + roomCode);
+
+      roomRef.get().then((snapshot) => {
+        if (!snapshot.exists()) {
+          // Créer le salon (Joueur 1)
+          myPlayerRole = 'p1';
+          targetTime = Math.floor(Math.random() * 7) + 3;
+          roomRef.set({ target: targetTime, p1: null, p2: null });
+          showStatus("Salon créé ! Donne le code " + roomCode + " à ton ami.");
+        } else {
+          // Rejoindre le salon (Joueur 2)
+          myPlayerRole = 'p2';
+          targetTime = snapshot.val().target;
+          showStatus("Connecté au salon " + roomCode + " ! Tu es le Joueur 2.");
+        }
+
+        document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
+        listenRoomUpdates(roomRef);
+      });
+    }
+
+    function listenRoomUpdates(roomRef) {
+      roomRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        p1Time = data.p1;
+        p2Time = data.p2;
+
+        if (p1Time !== null && p2Time !== null) {
+          showVSResult(p1Time, p2Time, "Joueur 1", "Joueur 2");
+          document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
+        } else if (myPlayerRole === 'p1' && p1Time !== null) {
+          showStatus("En attente du score du Joueur 2...");
+        } else if (myPlayerRole === 'p2' && p2Time !== null) {
+          showStatus("En attente du score du Joueur 1...");
+        }
+      });
+    }
+
+    function showStatus(msg) {
+      const st = document.getElementById('statusMsg');
+      st.style.display = 'block';
+      st.textContent = msg;
     }
 
     function handleAction() {
-      const t = dict[currentLang];
-
-      if (mode === 'online' && !isRunning && p1Time === null) {
-        searchOnlineMatch();
-        return;
-      }
-
-      if (actionBtn.textContent === t.btnReplay) {
+      if (document.getElementById('actionBtn').textContent === dict[currentLang].btnReplay) {
+        if (mode === 'online' && currentRoom) {
+          db.ref('rooms/' + currentRoom).set({ target: Math.floor(Math.random() * 7) + 3, p1: null, p2: null });
+        }
         resetGame();
         return;
       }
 
-      if (!isRunning) {
-        startTimer();
-      } else {
-        stopTimer();
-      }
-    }
-
-    function searchOnlineMatch() {
-      const t = dict[currentLang];
-      isSearchingMatch = true;
-      actionBtn.disabled = true;
-      actionBtn.textContent = t.searchingBtn;
-      statusMsg.style.display = 'block';
-      statusMsg.style.color = '#38bdf8';
-      statusMsg.textContent = t.searching;
-
-      setTimeout(() => {
-        statusMsg.style.color = '#f87171';
-        statusMsg.textContent = t.noPlayer;
-        actionBtn.disabled = false;
-        actionBtn.textContent = t.retry;
-        isSearchingMatch = false;
-      }, 3000);
+      if (!isRunning) startTimer();
+      else stopTimer();
     }
 
     function startTimer() {
-      const t = dict[currentLang];
       isRunning = true;
       startTime = performance.now();
-      actionBtn.textContent = t.btnStop;
-      actionBtn.classList.add('stop');
-      
+      document.getElementById('actionBtn').textContent = dict[currentLang].btnStop;
+      document.getElementById('actionBtn').classList.add('stop');
+
       timerInterval = setInterval(() => {
-        const elapsed = (performance.now() - startTime) / 1000;
-        timerEl.textContent = formatTime(elapsed);
+        document.getElementById('timer').textContent = formatTime((performance.now() - startTime) / 1000);
       }, 50);
     }
 
     function stopTimer() {
-      const t = dict[currentLang];
       clearInterval(timerInterval);
       isRunning = false;
       const finalTime = (performance.now() - startTime) / 1000;
-      timerEl.textContent = formatTime(finalTime);
-      actionBtn.classList.remove('stop');
+      document.getElementById('timer').textContent = formatTime(finalTime);
+      document.getElementById('actionBtn').classList.remove('stop');
 
       if (mode === 'solo') {
         showSoloResult(finalTime);
-        actionBtn.textContent = t.btnReplay;
+        document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
       } else if (mode === 'ai') {
-        const aiTime = generateAITime(targetTime);
-        showVSResult(finalTime, aiTime, t.you, t.ai);
-        actionBtn.textContent = t.btnReplay;
+        const aiTime = targetTime + (Math.random() - 0.5) * 0.4;
+        showVSResult(finalTime, Math.max(0, aiTime), "Toi", "IA");
+        document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
+      } else if (mode === 'online') {
+        if (!currentRoom) return alert("Rejoins d'abord un salon !");
+        db.ref('rooms/' + currentRoom + '/' + myPlayerRole).set(finalTime);
       } else if (mode === 'p2') {
         if (activePlayer === 1) {
           p1Time = finalTime;
           activePlayer = 2;
-          actionBtn.textContent = t.btnP2Start;
-          timerEl.textContent = formatTime(0);
+          document.getElementById('actionBtn').textContent = "J2 : LANCER";
+          document.getElementById('timer').textContent = formatTime(0);
         } else {
           p2Time = finalTime;
-          showVSResult(p1Time, p2Time, t.p1, t.p2);
-          actionBtn.textContent = t.btnReplay;
+          showVSResult(p1Time, p2Time, "Joueur 1", "Joueur 2");
+          document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
         }
       }
     }
 
-    function generateAITime(target) {
-      const error = (Math.random() - 0.5) * 0.3;
-      return Math.max(0, target + error);
-    }
-
     function showSoloResult(time) {
-      const t = dict[currentLang];
       const diff = Math.abs(time - targetTime);
-      const scoreClass = diff < 0.2 ? 'good' : 'bad';
-      resultsEl.innerHTML = `
+      document.getElementById('results').innerHTML = `
         <div class="result-row">
-          <span>${t.diffLabel} (${formatTime(targetTime)}s) :</span>
-          <span class="score-badge ${scoreClass}">${diff.toFixed(1)}s</span>
+          <span>Écart avec la cible :</span>
+          <span class="score-badge">${diff.toFixed(1)}s</span>
         </div>
       `;
     }
 
     function showVSResult(t1, t2, name1, name2) {
-      const t = dict[currentLang];
       const diff1 = Math.abs(t1 - targetTime);
       const diff2 = Math.abs(t2 - targetTime);
-
       let winner = name1;
       if (diff2 < diff1) winner = name2;
-      else if (diff1 === diff2) winner = t.draw;
+      else if (diff1 === diff2) winner = "Égalité";
 
-      resultsEl.innerHTML = `
-        <div class="result-row">
-          <span>${name1} : ${formatTime(t1)}s</span>
-          <span class="score-badge">${diff1.toFixed(1)}s ${t.diffBadge}</span>
-        </div>
-        <div class="result-row">
-          <span>${name2} : ${formatTime(t2)}s</span>
-          <span class="score-badge">${diff2.toFixed(1)}s ${t.diffBadge}</span>
-        </div>
-        <div class="result-row" style="background: rgba(99, 102, 241, 0.25); font-weight: bold; border: 1px solid rgba(129, 140, 248, 0.3);">
-          <span>${t.winner} :</span>
-          <span style="color: #38bdf8; font-size: 1.1rem;">🏆 ${winner}</span>
+      document.getElementById('results').innerHTML = `
+        <div class="result-row"><span>${name1} : ${formatTime(t1)}s</span><span class="score-badge">${diff1.toFixed(1)}s d'écart</span></div>
+        <div class="result-row"><span>${name2} : ${formatTime(t2)}s</span><span class="score-badge">${diff2.toFixed(1)}s d'écart</span></div>
+        <div class="result-row" style="background: rgba(99, 102, 241, 0.25);">
+          <span>Gagnant :</span><span style="color: #38bdf8; font-weight: bold;">🏆 ${winner}</span>
         </div>
       `;
     }
-
-    generateTarget();
   </script>
 </body>
 </html>
