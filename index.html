@@ -31,7 +31,6 @@
       position: relative;
     }
 
-    /* Overlay Sélection de Langue */
     .lang-overlay {
       position: fixed;
       top: 0;
@@ -172,22 +171,6 @@
       box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
     }
 
-    /* Multi-Online UI */
-    .online-box {
-      display: none;
-      width: 100%;
-      margin-bottom: 20px;
-      background: rgba(15, 23, 42, 0.5);
-      padding: 15px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .online-inputs { display: flex; gap: 10px; margin-top: 10px; }
-    .online-input {
-      flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2);
-      background: #0f172a; color: #fff; text-align: center; font-size: 1rem; outline: none;
-    }
-
     .target-box {
       background: rgba(15, 23, 42, 0.7);
       padding: 20px 32px;
@@ -274,15 +257,6 @@
       <button class="btn" id="btnP2" onclick="setMode('p2', this)">2 Joueurs</button>
     </div>
 
-    <!-- Section multijoueur Firebase -->
-    <div class="online-box" id="onlineBox">
-      <p style="font-size: 0.9rem; color: #94a3b8;">Entre un code de salon pour jouer avec un ami :</p>
-      <div class="online-inputs">
-        <input type="text" id="roomInput" class="online-input" placeholder="Code du salon (ex: 1234)" maxlength="6">
-        <button class="btn active" onclick="joinRoom()">REJOINDRE / CRÉER</button>
-      </div>
-    </div>
-
     <div class="target-box">
       <span id="txtTargetLabel">Temps Cible</span>
       <div id="targetDisplay">5.0s</div>
@@ -297,7 +271,6 @@
   </div>
 
   <script>
-    // Configuration Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCKrFKbtKEtIY7N7gqOEplfvW1WelfgoI",
       authDomain: "extreme-timer.firebaseapp.com",
@@ -322,9 +295,8 @@
     let activePlayer = 1;
     let showDecimals = true;
 
-    // Multijoueur variables
-    let currentRoom = null;
-    let myPlayerRole = null; // 'p1' or 'p2'
+    let currentRoomRef = null;
+    let myPlayerRole = null;
 
     const dict = {
       fr: {
@@ -380,8 +352,12 @@
       document.querySelectorAll('.mode-selector .btn').forEach(b => b.classList.remove('active'));
       btnElement.classList.add('active');
       
-      document.getElementById('onlineBox').style.display = (mode === 'online') ? 'block' : 'none';
+      if (currentRoomRef) { currentRoomRef.off(); currentRoomRef = null; }
       resetGame();
+
+      if (mode === 'online') {
+        findOnlineGame();
+      }
     }
 
     function resetGame() {
@@ -401,35 +377,50 @@
       }
     }
 
-    /* LOGIQUE EN LIGNE (FIREBASE) */
-    function joinRoom() {
-      const roomCode = document.getElementById('roomInput').value.trim();
-      if (!roomCode) return alert("Entre un code de salon !");
+    /* MATCHMAKING AUTOMATIQUE */
+    function findOnlineGame() {
+      showStatus("Recherche d'un autre joueur...");
+      document.getElementById('actionBtn').disabled = true;
+
+      const matchmakingRef = db.ref('matchmaking');
       
-      currentRoom = roomCode;
-      const roomRef = db.ref('rooms/' + roomCode);
+      matchmakingRef.get().then((snapshot) => {
+        const waitingGame = snapshot.val();
 
-      roomRef.get().then((snapshot) => {
-        if (!snapshot.exists()) {
-          // Créer le salon (Joueur 1)
-          myPlayerRole = 'p1';
-          targetTime = Math.floor(Math.random() * 7) + 3;
-          roomRef.set({ target: targetTime, p1: null, p2: null });
-          showStatus("Salon créé ! Donne le code " + roomCode + " à ton ami.");
-        } else {
-          // Rejoindre le salon (Joueur 2)
+        if (waitingGame && waitingGame.roomId) {
+          // Un joueur attend : on le rejoint
           myPlayerRole = 'p2';
-          targetTime = snapshot.val().target;
-          showStatus("Connecté au salon " + roomCode + " ! Tu es le Joueur 2.");
-        }
+          currentRoomRef = db.ref('rooms/' + waitingGame.roomId);
+          matchmakingRef.remove(); // On retire la file d'attente
 
-        document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
-        listenRoomUpdates(roomRef);
+          currentRoomRef.get().then((roomSnap) => {
+            targetTime = roomSnap.val().target;
+            document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
+            showStatus("Partie trouvée ! Tu es le Joueur 2.");
+            document.getElementById('actionBtn').disabled = false;
+            listenRoom();
+          });
+        } else {
+          // Personne n'attend : on crée une partie
+          myPlayerRole = 'p1';
+          const newRoomKey = db.ref('rooms').push().key;
+          currentRoomRef = db.ref('rooms/' + newRoomKey);
+          targetTime = Math.floor(Math.random() * 7) + 3;
+
+          currentRoomRef.set({ target: targetTime, p1: null, p2: null });
+          matchmakingRef.set({ roomId: newRoomKey });
+
+          document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
+          showStatus("En attente d'un adversaire...");
+          document.getElementById('actionBtn').disabled = false;
+          listenRoom();
+        }
       });
     }
 
-    function listenRoomUpdates(roomRef) {
-      roomRef.on('value', (snapshot) => {
+    function listenRoom() {
+      if (!currentRoomRef) return;
+      currentRoomRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
 
@@ -440,9 +431,9 @@
           showVSResult(p1Time, p2Time, "Joueur 1", "Joueur 2");
           document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
         } else if (myPlayerRole === 'p1' && p1Time !== null) {
-          showStatus("En attente du score du Joueur 2...");
+          showStatus("Ton score est enregistré ! En attente du Joueur 2...");
         } else if (myPlayerRole === 'p2' && p2Time !== null) {
-          showStatus("En attente du score du Joueur 1...");
+          showStatus("Ton score est enregistré ! En attente du Joueur 1...");
         }
       });
     }
@@ -455,10 +446,11 @@
 
     function handleAction() {
       if (document.getElementById('actionBtn').textContent === dict[currentLang].btnReplay) {
-        if (mode === 'online' && currentRoom) {
-          db.ref('rooms/' + currentRoom).set({ target: Math.floor(Math.random() * 7) + 3, p1: null, p2: null });
+        if (mode === 'online') {
+          findOnlineGame();
+        } else {
+          resetGame();
         }
-        resetGame();
         return;
       }
 
@@ -492,8 +484,9 @@
         showVSResult(finalTime, Math.max(0, aiTime), "Toi", "IA");
         document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
       } else if (mode === 'online') {
-        if (!currentRoom) return alert("Rejoins d'abord un salon !");
-        db.ref('rooms/' + currentRoom + '/' + myPlayerRole).set(finalTime);
+        if (currentRoomRef && myPlayerRole) {
+          currentRoomRef.child(myPlayerRole).set(finalTime);
+        }
       } else if (mode === 'p2') {
         if (activePlayer === 1) {
           p1Time = finalTime;
