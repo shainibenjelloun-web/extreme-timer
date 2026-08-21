@@ -31,7 +31,6 @@
       position: relative;
     }
 
-    /* Compteur de joueurs en ligne (Haut Gauche) */
     .online-counter {
       position: absolute;
       top: 24px;
@@ -56,7 +55,6 @@
       box-shadow: 0 0 8px #22c55e;
     }
 
-    /* Overlay Sélection de Langue */
     .lang-overlay {
       position: fixed;
       top: 0;
@@ -270,7 +268,6 @@
 </head>
 <body>
 
-  <!-- Compteur de personnes en ligne en haut à gauche -->
   <div class="online-counter">
     <div class="online-dot"></div>
     <span id="onlineCountText">1 joueur en ligne</span>
@@ -320,7 +317,6 @@
 
     <button class="action-btn" id="actionBtn" onclick="handleAction()">LANCER</button>
     
-    <!-- Bouton pour trouver un joueur (mode En Ligne) -->
     <button class="find-btn" id="findBtn" onclick="findOnlineGame()">🔍 TROUVER UN JOUEUR</button>
     
     <div class="results" id="results"></div>
@@ -353,6 +349,7 @@
 
     let currentRoomRef = null;
     let myPlayerRole = null;
+    let isQueueing = false;
 
     const dict = {
       fr: {
@@ -375,16 +372,13 @@
       }
     };
 
-    /* PRESENCE ET COMPTEUR EN LIGNE */
     function initOnlineCounter() {
       const presenceRef = db.ref('presence');
       const myPresenceRef = presenceRef.push();
 
-      // Ajouter mon entrée
       myPresenceRef.set(true);
       myPresenceRef.onDisconnect().remove();
 
-      // Écouter le nombre de connectés
       presenceRef.on('value', (snapshot) => {
         const count = snapshot.numChildren() || 1;
         document.getElementById('onlineCountText').textContent = count + (count > 1 ? " joueurs en ligne" : " joueur en ligne");
@@ -425,15 +419,20 @@
       document.querySelectorAll('.mode-selector .btn').forEach(b => b.classList.remove('active'));
       btnElement.classList.add('active');
       
+      leaveMatchmaking();
       if (currentRoomRef) { currentRoomRef.off(); currentRoomRef = null; }
       
-      // Afficher/masquer le bouton Trouver un joueur
       document.getElementById('findBtn').style.display = (mode === 'online') ? 'block' : 'none';
 
       resetGame();
 
       if (mode === 'online') {
-        showStatus("Clique sur 'TROUVER UN JOUEUR' pour lancer une partie !");
+        showStatus("Appuie sur 'TROUVER UN JOUEUR' pour lancer une recherche !");
+        document.getElementById('actionBtn').disabled = true;
+        document.getElementById('actionBtn').style.opacity = '0.5';
+      } else {
+        document.getElementById('actionBtn').disabled = false;
+        document.getElementById('actionBtn').style.opacity = '1';
       }
     }
 
@@ -443,7 +442,6 @@
       document.getElementById('timer').textContent = formatTime(0);
       document.getElementById('statusMsg').style.display = 'none';
       document.getElementById('actionBtn').classList.remove('stop');
-      document.getElementById('actionBtn').disabled = false;
       document.getElementById('results').innerHTML = '';
       p1Time = null; p2Time = null;
       document.getElementById('actionBtn').textContent = dict[currentLang].btnStart;
@@ -454,58 +452,96 @@
       }
     }
 
-    /* MATCHMAKING REALTIME */
+    function leaveMatchmaking() {
+      if (isQueueing) {
+        db.ref('queue').transaction(currentQueue => null);
+        isQueueing = false;
+      }
+    }
+
+    /* MATCHMAKING MULTIJOUEUR EN TEMPS RÉEL */
     function findOnlineGame() {
+      leaveMatchmaking();
+      if (currentRoomRef) { currentRoomRef.off(); currentRoomRef = null; }
+
       showStatus("🔎 Recherche d'un adversaire en cours...");
       document.getElementById('findBtn').disabled = true;
-      document.getElementById('findBtn').style.opacity = '0.6';
+      document.getElementById('findBtn').style.opacity = '0.5';
 
-      const matchmakingRef = db.ref('matchmaking');
-      
-      matchmakingRef.get().then((snapshot) => {
-        const waitingGame = snapshot.val();
+      const queueRef = db.ref('queue');
 
-        if (waitingGame && waitingGame.roomId) {
-          // Un joueur attend : rejoindre la salle
-          myPlayerRole = 'p2';
-          currentRoomRef = db.ref('rooms/' + waitingGame.roomId);
-          matchmakingRef.remove(); // Nettoyer la file d'attente
-
-          currentRoomRef.get().then((roomSnap) => {
-            targetTime = roomSnap.val().target;
-            document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
-            showStatus("⚡ Joueur trouvé ! Tu es le Joueur 2.");
-            enableOnlineButtons();
-            listenRoom();
-          });
+      queueRef.transaction((currentQueue) => {
+        if (currentQueue === null) {
+          // Premier joueur : créer une file
+          const roomKey = db.ref('rooms').push().key;
+          return { roomId: roomKey, target: Math.floor(Math.random() * 7) + 3 };
         } else {
-          // Attendre un second joueur
-          myPlayerRole = 'p1';
-          const newRoomKey = db.ref('rooms').push().key;
-          currentRoomRef = db.ref('rooms/' + newRoomKey);
-          targetTime = Math.floor(Math.random() * 7) + 3;
+          // Deuxième joueur : rejoindre la file existante
+          return null; // On vide la file pour le joueur suivant
+        }
+      }, (error, committed, snapshot) => {
+        if (error) return showStatus("Erreur de connexion. Réessaye !");
 
-          currentRoomRef.set({ target: targetTime, p1: null, p2: null });
-          matchmakingRef.set({ roomId: newRoomKey });
+        if (committed) {
+          const queueData = snapshot.val();
+          if (queueData) {
+            // Rôle : JOUEUR 1 (Hôte)
+            myPlayerRole = 'p1';
+            isQueueing = true;
+            targetTime = queueData.target;
+            currentRoomRef = db.ref('rooms/' + queueData.roomId);
 
-          document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
-          showStatus("⌛ En attente d'un adversaire...");
-          enableOnlineButtons();
-          listenRoom();
+            currentRoomRef.set({ target: targetTime, p1: null, p2: null, status: 'waiting' });
+            document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
+            
+            showStatus("⌛ En attente qu'un deuxième joueur clique...");
+            listenRoom();
+          } else {
+            // Rôle : JOUEUR 2 (Rejoint)
+            // On récupère les infos de la salle créée par le joueur 1
+            queueRef.once('value', (oldSnap) => {
+              // Récupérer le dernier salon via la liste des rooms
+              db.ref('rooms').limitToLast(1).once('value', (roomsSnap) => {
+                const rooms = roomsSnap.val();
+                if (!rooms) return;
+                const roomId = Object.keys(rooms)[0];
+                const roomData = rooms[roomId];
+
+                myPlayerRole = 'p2';
+                targetTime = roomData.target;
+                currentRoomRef = db.ref('rooms/' + roomId);
+
+                currentRoomRef.update({ status: 'ready' });
+                document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
+
+                onGameReady();
+                listenRoom();
+              });
+            });
+          }
         }
       });
     }
 
-    function enableOnlineButtons() {
+    function onGameReady() {
+      showStatus("⚡ Joueur trouvé ! La partie commence !");
       document.getElementById('findBtn').disabled = false;
       document.getElementById('findBtn').style.opacity = '1';
+      document.getElementById('actionBtn').disabled = false;
+      document.getElementById('actionBtn').style.opacity = '1';
     }
 
     function listenRoom() {
       if (!currentRoomRef) return;
+
       currentRoomRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
+
+        if (data.status === 'ready' && myPlayerRole === 'p1') {
+          isQueueing = false;
+          onGameReady();
+        }
 
         p1Time = data.p1;
         p2Time = data.p2;
@@ -514,9 +550,9 @@
           showVSResult(p1Time, p2Time, "Joueur 1", "Joueur 2");
           document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
         } else if (myPlayerRole === 'p1' && p1Time !== null) {
-          showStatus("Score envoyé ! En attente du Joueur 2...");
+          showStatus("✅ Score envoyé ! En attente du Joueur 2...");
         } else if (myPlayerRole === 'p2' && p2Time !== null) {
-          showStatus("Score envoyé ! En attente du Joueur 1...");
+          showStatus("✅ Score envoyé ! En attente du Joueur 1...");
         }
       });
     }
