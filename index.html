@@ -31,6 +31,32 @@
       position: relative;
     }
 
+    /* Compteur de joueurs en ligne (Haut Gauche) */
+    .online-counter {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 99px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .online-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    /* Overlay Sélection de Langue */
     .lang-overlay {
       position: fixed;
       top: 0;
@@ -211,6 +237,27 @@
       box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
     }
 
+    .find-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.3);
+      margin-top: 12px;
+      display: none;
+      transition: all 0.2s;
+    }
+
+    .find-btn:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
     .status-msg { font-size: 0.95rem; color: #38bdf8; margin-bottom: 12px; font-weight: 600; }
 
     .results { margin-top: 24px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
@@ -222,6 +269,12 @@
   </style>
 </head>
 <body>
+
+  <!-- Compteur de personnes en ligne en haut à gauche -->
+  <div class="online-counter">
+    <div class="online-dot"></div>
+    <span id="onlineCountText">1 joueur en ligne</span>
+  </div>
 
   <div class="lang-overlay" id="langOverlay">
     <div class="lang-card">
@@ -266,6 +319,9 @@
     <div id="statusMsg" class="status-msg" style="display: none;"></div>
 
     <button class="action-btn" id="actionBtn" onclick="handleAction()">LANCER</button>
+    
+    <!-- Bouton pour trouver un joueur (mode En Ligne) -->
+    <button class="find-btn" id="findBtn" onclick="findOnlineGame()">🔍 TROUVER UN JOUEUR</button>
     
     <div class="results" id="results"></div>
   </div>
@@ -319,10 +375,27 @@
       }
     };
 
+    /* PRESENCE ET COMPTEUR EN LIGNE */
+    function initOnlineCounter() {
+      const presenceRef = db.ref('presence');
+      const myPresenceRef = presenceRef.push();
+
+      // Ajouter mon entrée
+      myPresenceRef.set(true);
+      myPresenceRef.onDisconnect().remove();
+
+      // Écouter le nombre de connectés
+      presenceRef.on('value', (snapshot) => {
+        const count = snapshot.numChildren() || 1;
+        document.getElementById('onlineCountText').textContent = count + (count > 1 ? " joueurs en ligne" : " joueur en ligne");
+      });
+    }
+
     function submitLanguage() {
       currentLang = document.getElementById('langSelect').value;
       document.getElementById('langOverlay').style.display = 'none';
       applyLanguage();
+      initOnlineCounter();
       resetGame();
     }
 
@@ -353,10 +426,14 @@
       btnElement.classList.add('active');
       
       if (currentRoomRef) { currentRoomRef.off(); currentRoomRef = null; }
+      
+      // Afficher/masquer le bouton Trouver un joueur
+      document.getElementById('findBtn').style.display = (mode === 'online') ? 'block' : 'none';
+
       resetGame();
 
       if (mode === 'online') {
-        findOnlineGame();
+        showStatus("Clique sur 'TROUVER UN JOUEUR' pour lancer une partie !");
       }
     }
 
@@ -377,10 +454,11 @@
       }
     }
 
-    /* MATCHMAKING AUTOMATIQUE */
+    /* MATCHMAKING REALTIME */
     function findOnlineGame() {
-      showStatus("Recherche d'un autre joueur...");
-      document.getElementById('actionBtn').disabled = true;
+      showStatus("🔎 Recherche d'un adversaire en cours...");
+      document.getElementById('findBtn').disabled = true;
+      document.getElementById('findBtn').style.opacity = '0.6';
 
       const matchmakingRef = db.ref('matchmaking');
       
@@ -388,20 +466,20 @@
         const waitingGame = snapshot.val();
 
         if (waitingGame && waitingGame.roomId) {
-          // Un joueur attend : on le rejoint
+          // Un joueur attend : rejoindre la salle
           myPlayerRole = 'p2';
           currentRoomRef = db.ref('rooms/' + waitingGame.roomId);
-          matchmakingRef.remove(); // On retire la file d'attente
+          matchmakingRef.remove(); // Nettoyer la file d'attente
 
           currentRoomRef.get().then((roomSnap) => {
             targetTime = roomSnap.val().target;
             document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
-            showStatus("Partie trouvée ! Tu es le Joueur 2.");
-            document.getElementById('actionBtn').disabled = false;
+            showStatus("⚡ Joueur trouvé ! Tu es le Joueur 2.");
+            enableOnlineButtons();
             listenRoom();
           });
         } else {
-          // Personne n'attend : on crée une partie
+          // Attendre un second joueur
           myPlayerRole = 'p1';
           const newRoomKey = db.ref('rooms').push().key;
           currentRoomRef = db.ref('rooms/' + newRoomKey);
@@ -411,11 +489,16 @@
           matchmakingRef.set({ roomId: newRoomKey });
 
           document.getElementById('targetDisplay').textContent = formatTime(targetTime) + 's';
-          showStatus("En attente d'un adversaire...");
-          document.getElementById('actionBtn').disabled = false;
+          showStatus("⌛ En attente d'un adversaire...");
+          enableOnlineButtons();
           listenRoom();
         }
       });
+    }
+
+    function enableOnlineButtons() {
+      document.getElementById('findBtn').disabled = false;
+      document.getElementById('findBtn').style.opacity = '1';
     }
 
     function listenRoom() {
@@ -431,9 +514,9 @@
           showVSResult(p1Time, p2Time, "Joueur 1", "Joueur 2");
           document.getElementById('actionBtn').textContent = dict[currentLang].btnReplay;
         } else if (myPlayerRole === 'p1' && p1Time !== null) {
-          showStatus("Ton score est enregistré ! En attente du Joueur 2...");
+          showStatus("Score envoyé ! En attente du Joueur 2...");
         } else if (myPlayerRole === 'p2' && p2Time !== null) {
-          showStatus("Ton score est enregistré ! En attente du Joueur 1...");
+          showStatus("Score envoyé ! En attente du Joueur 1...");
         }
       });
     }
